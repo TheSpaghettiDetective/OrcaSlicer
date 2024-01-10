@@ -133,6 +133,39 @@ protected:
     bool validate_version_text(const boost::optional<std::string>& version_text) const override;
 };
 
+class Obico : public OctoPrint
+{
+public:
+    Obico(DynamicPrintConfig *config);
+    ~Obico() override = default;
+
+    bool has_auto_discovery() const override { return false; }
+
+    wxString get_test_ok_msg() const override;
+    wxString get_test_failed_msg(wxString& msg) const override;
+    virtual PrintHostPostUploadActions get_post_upload_actions() const override;
+    virtual bool test(wxString &curl_msg) const override;
+    bool get_printers(wxArrayString &printers) const override;
+    virtual std::string get_apikey_url() const override;
+    bool upload(PrintHostUpload upload_data, ProgressFn prorgess_fn, ErrorFn error_fn, InfoFn info_fn) const override;
+protected:
+    std::string m_printhost_apikey;
+    std::string m_port;
+
+    virtual void set_auth(Http &http) const override;
+#ifdef WIN32
+    virtual bool upload_inner_with_resolved_ip(PrintHostUpload upload_data, ProgressFn prorgess_fn, ErrorFn error_fn, InfoFn info_fn, const boost::asio::ip::address& resolved_addr) const override;
+#endif
+    virtual bool validate_version_text(const boost::optional<std::string> &version_text) const override;
+    virtual bool upload_inner_with_host(PrintHostUpload upload_data, ProgressFn prorgess_fn, ErrorFn error_fn, InfoFn info_fn) const override;
+private:
+#ifdef WIN32
+    bool test_with_resolved_ip(wxString& curl_msg) const;
+#endif
+
+    std::string get_printer_id() const {return m_port;}
+};
+
 }
 
 #endif

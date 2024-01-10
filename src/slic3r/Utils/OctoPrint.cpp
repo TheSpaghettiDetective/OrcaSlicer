@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <sstream>
 #include <exception>
+#include <boost/foreach.hpp>
 #include <boost/format.hpp>
 #include <boost/log/trivial.hpp>
 #include <boost/property_tree/ptree.hpp>
@@ -1176,4 +1177,424 @@ wxString PrusaConnect::get_test_failed_msg(wxString& msg) const
 {
     return GUI::format_wxstr("%s: %s", _L("Could not connect to Prusa Connect"), msg);
 }
+
+Obico::Obico(DynamicPrintConfig* config) :
+    OctoPrint(config),
+    m_printhost_apikey(config->opt_string("printhost_apikey")),
+    m_port(config->opt_string("printhost_port"))
+{
+}
+
+PrintHostPostUploadActions Obico::get_post_upload_actions() const {
+    if (m_printhost_apikey.empty()) {
+        return {};
+    }
+    return PrintHostPostUploadAction::StartPrint;
+}
+
+void Obico::set_auth(Http &http) const
+{
+    http.header("Authorization", "Token " + m_apikey);
+
+    if (!m_cafile.empty()) {
+        http.ca_file(m_cafile);
+    }
+}
+
+std::string Obico::get_apikey_url() const {
+    return make_url("user_preferences/api_key/");
+}
+
+bool Obico::validate_version_text(const boost::optional<std::string> &version_text) const
+{
+    return version_text ? boost::starts_with(*version_text, "Obico") : true;
+}
+
+wxString Obico::get_test_ok_msg () const
+{
+    return _(L("Connection to Obico works correctly."));
+}
+
+wxString Obico::get_test_failed_msg (wxString &msg) const
+{
+    return GUI::format_wxstr("%s: %s"
+        , _L("Could not connect to Obico")
+        , msg.Truncate(256)
+    );
+}
+
+bool Obico::test(wxString& msg) const
+{
+    // Since the request is performed synchronously here,
+    // it is ok to refer to `msg` from within the closure
+    const char *name = get_name();
+
+    bool res = true;
+    auto url = make_url("ent/partners/slicer-api/version/");
+
+    BOOST_LOG_TRIVIAL(info) << boost::format("%1%: Get version at: %2%") % name % url;
+    // Here we do not have to add custom "Host" header - the url contains host filled by user and libCurl will set the header by itself.
+    auto http = Http::get(std::move(url));
+    set_auth(http);
+    http.on_error([&](std::string body, std::string error, unsigned status) {
+            BOOST_LOG_TRIVIAL(error) << boost::format("%1%: Error getting version: %2%, HTTP %3%, body: `%4%`") % name % error % status % body;
+            res = false;
+            msg = format_error(body, error, status);
+        })
+        .on_complete([&, this](std::string body, unsigned) {
+            BOOST_LOG_TRIVIAL(debug) << boost::format("%1%: Got version: %2%") % name % body;
+
+            try {
+                std::stringstream ss(body);
+                pt::ptree ptree;
+                pt::read_json(ss, ptree);
+
+                const auto text = ptree.get_optional<std::string>("text");
+                res = validate_version_text(text);
+                if (! res) {
+                    msg = GUI::format_wxstr(_L("Mismatched type of print host: %s"), (text ? *text : name));
+                }
+            }
+            catch (const std::exception &) {
+                res = false;
+                msg = "Could not parse server response";
+            }
+        })
+#ifdef WIN32
+            .ssl_revoke_best_effort(m_ssl_revoke_best_effort)
+            .on_ip_resolve([&](std::string address) {
+            // Workaround for Windows 10/11 mDNS resolve issue, where two mDNS resolves in succession fail.
+            // Remember resolved address to be reused at successive REST API call.
+            msg = GUI::from_u8(address);
+        })
+#endif // WIN32
+        .perform_sync();
+
+    return res;
+}
+
+#ifdef WIN32
+bool Obico::test_with_resolved_ip(wxString &msg) const
+{
+    // Since the request is performed synchronously here,
+    // it is ok to refer to `msg` from within the closure
+    const char* name = get_name();
+    bool res = true;
+    // Msg contains ip string.
+    auto url = substitute_host(make_url("ent/partners/slicer-api/version/"), GUI::into_u8(msg));
+    msg.Clear();
+
+    BOOST_LOG_TRIVIAL(info) << boost::format("%1%: Get version at: %2%") % name % url;
+
+    std::string host = get_host_from_url(m_host);
+    auto http = Http::get(url);//std::move(url));
+    // "Host" header is necessary here. We have resolved IP address and subsituted it into "url" variable.
+    // And when creating Http object above, libcurl automatically includes "Host" header from address it got.
+    // Thus "Host" is set to the resolved IP instead of host filled by user. We need to change it back.
+    // Not changing the host would work on the most cases (where there is 1 service on 1 hostname) but would break when f.e. reverse proxy is used (issue #9734).
+    // Also when allow_ip_resolve = 0, this is not needed, but it should not break anything if it stays.
+    // https://www.rfc-editor.org/rfc/rfc7230#section-5.4
+    http.header("Host", host);
+    set_auth(http);
+    http
+        .on_error([&](std::string body, std::string error, unsigned status) {
+            BOOST_LOG_TRIVIAL(error) << boost::format("%1%: Error getting version at %2% : %3%, HTTP %4%, body: `%5%`") % name % url % error % status % body;
+            res = false;
+            msg = format_error(body, error, status);
+        })
+        .on_complete([&, this](std::string body, unsigned) {
+            BOOST_LOG_TRIVIAL(info) << boost::format("%1%: Got version: %2%") % name % body;
+
+            try {
+                std::stringstream ss(body);
+                pt::ptree ptree;
+                pt::read_json(ss, ptree);
+
+                const auto text = ptree.get_optional<std::string>("text");
+                res = validate_version_text(text);
+                if (!res) {
+                    msg = GUI::format_wxstr(_L("Mismatched type of print host: %s"), (text ? *text : name));
+                }
+            }
+            catch (const std::exception&) {
+                res = false;
+                msg = "Could not parse server response.";
+            }
+        })
+        .ssl_revoke_best_effort(m_ssl_revoke_best_effort)
+        .perform_sync();
+
+    return res;
+}
+#endif //WIN32
+
+bool Obico::get_printers(wxArrayString& printers) const
+{
+    const char *name = get_name();
+
+    bool res = true;
+    auto url = make_url("ent/partners/slicer-api/printers/");
+
+    BOOST_LOG_TRIVIAL(info) << boost::format("%1%: List printers at: %2%") % name % url;
+
+    auto http = Http::get(std::move(url));
+    set_auth(http);
+
+    http.on_error([&](std::string body, std::string error, unsigned status) {
+            BOOST_LOG_TRIVIAL(error) << boost::format("%1%: Error listing printers: %2%, HTTP %3%, body: `%4%`") % name % error % status % body;
+            res = false;
+        })
+        .on_complete([&](std::string body, unsigned http_status) {
+            BOOST_LOG_TRIVIAL(debug) << boost::format("%1%: Got printers: %2%, HTTP status: %3%") % name % body % http_status;
+
+            if (http_status != 200)
+                throw HostNetworkError(GUI::format(_L("HTTP status: %1%\nMessage body: \"%2%\""), http_status, body));
+
+            std::stringstream ss(body);
+            pt::ptree ptree;
+            try {
+                pt::read_json(ss, ptree);
+            } catch (const pt::ptree_error &err) {
+                throw HostNetworkError(GUI::format(_L("Parsing of host response failed.\nMessage body: \"%1%\"\nError: \"%2%\""), body, err.what()));
+            }
+
+            const auto error = ptree.get_optional<std::string>("error");
+            if (error)
+                throw HostNetworkError(*error);
+
+            try {
+                BOOST_FOREACH(boost::property_tree::ptree::value_type &v, ptree.get_child("printers")) {
+                    const auto name = v.second.get<std::string>("name");
+                    const auto port = v.second.get<std::string>("id");
+                    printers.push_back(Slic3r::GUI::from_u8(name + " [" + port + "]"));
+                }
+            } catch (const std::exception &err) {
+                throw HostNetworkError(GUI::format(_L("Enumeration of host printers failed.\nMessage body: \"%1%\"\nError: \"%2%\""), body, err.what()));
+            }
+        })
+        .perform_sync();
+
+    return res;
+}
+
+bool Obico::upload(PrintHostUpload upload_data, ProgressFn prorgess_fn, ErrorFn error_fn, InfoFn info_fn) const
+{
+#ifndef WIN32
+    return upload_inner_with_host(std::move(upload_data), prorgess_fn, error_fn, info_fn);
+#else
+    std::string host = get_host_from_url(m_host);
+
+    // decide what to do based on m_host - resolve hostname or upload to ip
+    std::vector<boost::asio::ip::address> resolved_addr;
+    boost::system::error_code ec;
+    boost::asio::ip::address host_ip = boost::asio::ip::make_address(host, ec);
+    if (!ec) {
+        resolved_addr.push_back(host_ip);
+    } else if ( GUI::get_app_config()->get_bool("allow_ip_resolve") && boost::algorithm::ends_with(host, ".local")){
+        Bonjour("octoprint")
+            .set_hostname(host)
+            .set_retries(5) // number of rounds of queries send
+            .set_timeout(1) // after each timeout, if there is any answer, the resolving will stop
+            .on_resolve([&ra = resolved_addr](const std::vector<BonjourReply>& replies) {
+                for (const auto & rpl : replies) {
+                    boost::asio::ip::address ip(rpl.ip);
+                    ra.emplace_back(ip);
+                    BOOST_LOG_TRIVIAL(info) << "Resolved IP address: " << rpl.ip;
+                }
+            })
+            .resolve_sync();
+    }
+    if (resolved_addr.empty()) {
+        // no resolved addresses - try system resolving
+        BOOST_LOG_TRIVIAL(error) << "PrusaSlicer failed to resolve hostname " << m_host << " into the IP address. Starting upload with system resolving.";
+        return upload_inner_with_host(std::move(upload_data), prorgess_fn, error_fn, info_fn);
+    } else if (resolved_addr.size() == 1) {
+        // one address resolved - upload there
+        return upload_inner_with_resolved_ip(std::move(upload_data), prorgess_fn, error_fn, info_fn, resolved_addr.front());
+    }  else if (resolved_addr.size() == 2 && resolved_addr[0].is_v4() != resolved_addr[1].is_v4()) {
+        // there are just 2 addresses and 1 is ip_v4 and other is ip_v6
+        // try sending to both. (Then if both fail, show both error msg after second try)
+        wxString error_message;
+        if (!upload_inner_with_resolved_ip(std::move(upload_data), prorgess_fn
+            , [&msg = error_message, resolved_addr](wxString error) { msg = GUI::format_wxstr("%1%: %2%", resolved_addr.front(), error); }
+            , info_fn, resolved_addr.front())
+            &&
+            !upload_inner_with_resolved_ip(std::move(upload_data), prorgess_fn
+            , [&msg = error_message, resolved_addr](wxString error) { msg += GUI::format_wxstr("\n%1%: %2%", resolved_addr.back(), error); }
+            , info_fn, resolved_addr.back())
+            ) {
+
+            error_fn(error_message);
+            return false;
+        }
+        return true;
+    } else {
+        // There are multiple addresses - user needs to choose which to use.
+        size_t selected_index = resolved_addr.size();
+        IPListDialog dialog(nullptr, boost::nowide::widen(m_host), resolved_addr, selected_index);
+        if (dialog.ShowModal() == wxID_OK && selected_index < resolved_addr.size()) {
+            return upload_inner_with_resolved_ip(std::move(upload_data), prorgess_fn, error_fn, info_fn, resolved_addr[selected_index]);
+        }
+    }
+    return false;
+#endif // WIN32
+}
+#ifdef WIN32
+bool Obico::upload_inner_with_resolved_ip(PrintHostUpload upload_data, ProgressFn prorgess_fn, ErrorFn error_fn, InfoFn info_fn, const boost::asio::ip::address& resolved_addr) const
+{
+    info_fn(L"resolve", boost::nowide::widen(resolved_addr.to_string()));
+
+    // If test fails, test_msg_or_host_ip contains the error message.
+    // Otherwise on Windows it contains the resolved IP address of the host.
+    // Test_msg already contains resolved ip and will be cleared on start of test().
+    wxString test_msg_or_host_ip = GUI::from_u8(resolved_addr.to_string());
+    if (!test_with_resolved_ip(test_msg_or_host_ip)) {
+        error_fn(std::move(test_msg_or_host_ip));
+        return false;
+    }
+
+    const char* name = get_name();
+    const auto upload_filename = upload_data.upload_path.filename();
+    const auto upload_parent_path = upload_data.upload_path.parent_path();
+    std::string url = substitute_host(make_url("ent/partners/slicer-api/files/local/"), resolved_addr.to_string());
+    bool result = true;
+    const auto printer_id = get_printer_id()
+
+    info_fn(L"resolve", boost::nowide::widen(url));
+
+    BOOST_LOG_TRIVIAL(info) << boost::format("%1%: Uploading file %2% at %3%, filename: %4%, path: %5%, print: %6%")
+        % name
+        % upload_data.source_path
+        % url
+        % upload_filename.string()
+        % upload_parent_path.string()
+        % (upload_data.post_action == PrintHostPostUploadAction::StartPrint ? "true" : "false");
+
+    std::string host = get_host_from_url(m_host);
+    auto http = Http::post(url);//std::move(url));
+    // "Host" header is necessary here. We have resolved IP address and subsituted it into "url" variable.
+    // And when creating Http object above, libcurl automatically includes "Host" header from address it got.
+    // Thus "Host" is set to the resolved IP instead of host filled by user. We need to change it back.
+    // Not changing the host would work on the most cases (where there is 1 service on 1 hostname) but would break when f.e. reverse proxy is used (issue #9734).
+    // https://www.rfc-editor.org/rfc/rfc7230#section-5.4
+    http.header("Host", host);
+    set_auth(http);
+    http.form_add("print", upload_data.post_action == PrintHostPostUploadAction::StartPrint ? "true" : "false")
+        .form_add("path", upload_parent_path.string())      // XXX: slashes on windows ???
+	.form_add("printer_id", printer_id)
+        .form_add_file("file", upload_data.source_path.string(), upload_filename.string())
+
+        .on_complete([&](std::string body, unsigned status) {
+            BOOST_LOG_TRIVIAL(debug) << boost::format("%1%: File uploaded: HTTP %2%: %3%") % name % status % body;
+        })
+        .on_error([&](std::string body, std::string error, unsigned status) {
+            BOOST_LOG_TRIVIAL(error) << boost::format("%1%: Error uploading file to %2%: %3%, HTTP %4%, body: `%5%`") % name % url % error % status % body;
+            error_fn(format_error(body, error, status));
+            result = false;
+        })
+        .on_progress([&](Http::Progress progress, bool& cancel) {
+            prorgess_fn(std::move(progress), cancel);
+            if (cancel) {
+                // Upload was canceled
+                BOOST_LOG_TRIVIAL(info) << name << ": Upload canceled";
+                result = false;
+            }
+        })
+        .ssl_revoke_best_effort(m_ssl_revoke_best_effort)
+        .perform_sync();
+
+    return result;
+}
+#endif //WIN32
+
+bool Obico::upload_inner_with_host(PrintHostUpload upload_data, ProgressFn prorgess_fn, ErrorFn error_fn, InfoFn info_fn) const
+{
+    const char* name = get_name();
+
+    const auto upload_filename = upload_data.upload_path.filename();
+    const auto upload_parent_path = upload_data.upload_path.parent_path();
+    const auto printer_id = get_printer_id();
+
+    // If test fails, test_msg_or_host_ip contains the error message.
+    // Otherwise on Windows it contains the resolved IP address of the host.
+    wxString test_msg_or_host_ip;
+    if (!test(test_msg_or_host_ip)) {
+        error_fn(std::move(test_msg_or_host_ip));
+        return false;
+    }
+
+    std::string url;
+    bool res = true;
+
+#ifdef WIN32
+    // Workaround for Windows 10/11 mDNS resolve issue, where two mDNS resolves in succession fail.
+    if (m_host.find("https://") == 0 || test_msg_or_host_ip.empty() || !GUI::get_app_config()->get_bool("allow_ip_resolve"))
+#endif // _WIN32
+    {
+        // If https is entered we assume signed ceritificate is being used
+        // IP resolving will not happen - it could resolve into address not being specified in cert
+        url = make_url("ent/partners/slicer-api/files/local/");
+    }
+#ifdef WIN32
+    else {
+        // Workaround for Windows 10/11 mDNS resolve issue, where two mDNS resolves in succession fail.
+        // Curl uses easy_getinfo to get ip address of last successful transaction.
+        // If it got the address use it instead of the stored in "host" variable.
+        // This new address returns in "test_msg_or_host_ip" variable.
+        // Solves troubles of uploades failing with name address.
+        // in original address (m_host) replace host for resolved ip
+        info_fn(L"resolve", test_msg_or_host_ip);
+        url = substitute_host(make_url("ent/partners/slicer-api/files/local/"), GUI::into_u8(test_msg_or_host_ip));
+        BOOST_LOG_TRIVIAL(info) << "Upload address after ip resolve: " << url;
+    }
+#endif // _WIN32
+
+    BOOST_LOG_TRIVIAL(info) << boost::format("%1%: Uploading file %2% at %3%, filename: %4%, path: %5%, print: %6%")
+        % name
+        % upload_data.source_path
+        % url
+        % upload_filename.string()
+        % upload_parent_path.string()
+        % (upload_data.post_action == PrintHostPostUploadAction::StartPrint ? "true" : "false");
+
+    auto http = Http::post(std::move(url));
+#ifdef WIN32
+    // "Host" header is necessary here. In the workaround above (two mDNS..) we have got IP address from test connection and subsituted it into "url" variable.
+    // And when creating Http object above, libcurl automatically includes "Host" header from address it got.
+    // Thus "Host" is set to the resolved IP instead of host filled by user. We need to change it back.
+    // Not changing the host would work on the most cases (where there is 1 service on 1 hostname) but would break when f.e. reverse proxy is used (issue #9734).
+    // Also when allow_ip_resolve = 0, this is not needed, but it should not break anything if it stays.
+    // https://www.rfc-editor.org/rfc/rfc7230#section-5.4
+    std::string host = get_host_from_url(m_host);
+    http.header("Host", host);
+#endif // _WIN32
+    set_auth(http);
+    http.form_add("print", upload_data.post_action == PrintHostPostUploadAction::StartPrint ? "true" : "false")
+        .form_add("path", upload_parent_path.string())      // XXX: slashes on windows ???
+        .form_add("printer_id", printer_id)      // XXX: slashes on windows ???
+        .form_add_file("file", upload_data.source_path.string(), upload_filename.string())
+        .on_complete([&](std::string body, unsigned status) {
+            BOOST_LOG_TRIVIAL(debug) << boost::format("%1%: File uploaded: HTTP %2%: %3%") % name % status % body;
+        })
+        .on_error([&](std::string body, std::string error, unsigned status) {
+            BOOST_LOG_TRIVIAL(error) << boost::format("%1%: Error uploading file: %2%, HTTP %3%, body: `%4%`") % name % error % status % body;
+            error_fn(format_error(body, error, status));
+            res = false;
+        })
+        .on_progress([&](Http::Progress progress, bool& cancel) {
+            prorgess_fn(std::move(progress), cancel);
+            if (cancel) {
+                // Upload was canceled
+                BOOST_LOG_TRIVIAL(info) << name << ": Upload canceled";
+                res = false;
+            }
+        })
+#ifdef WIN32
+        .ssl_revoke_best_effort(m_ssl_revoke_best_effort)
+#endif
+        .perform_sync();
+
+    return res;
+}
+
 }

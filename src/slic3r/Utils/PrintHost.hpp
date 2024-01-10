@@ -60,10 +60,14 @@ public:
     virtual bool supports_multiple_printers() const { return false; }
     virtual std::string get_host() const = 0;
 
-    // Support for Repetier server multiple groups & printers. Not supported by other print hosts.
+    // Support for Repetier / Obico server multiple groups & printers. Not supported by other print hosts.
     // Returns false if not supported. May throw HostNetworkError.
     virtual bool get_groups(wxArrayString & /* groups */) const { return false; }
     virtual bool get_printers(wxArrayString & /* printers */) const { return false; }
+
+    // Support for Obico Get API Key button. Not supported by other print hosts.
+    virtual std::string get_apikey_url() const {return ""; }
+
     // Support for PrusaLink uploading to different storage. Not supported by other print hosts.
     // Returns false if not supported or fail.
     virtual bool get_storage(wxArrayString& /*storage_path*/, wxArrayString& /*storage_name*/) const { return false; }

@@ -75,7 +75,7 @@ void PrinterWebView::load_url(wxString& url, wxString apikey)
         return;
     m_apikey = apikey;
     m_apikey_sent = false;
-    
+
     m_browser->LoadURL(url);
     //m_browser->SetFocus();
     UpdateState();
@@ -96,10 +96,20 @@ void PrinterWebView::OnClose(wxCloseEvent& evt)
 
 void PrinterWebView::SendAPIKey()
 {
+    if (m_apikey.IsEmpty()) {
+        m_browser->RemoveAllUserScripts();
+    }
+
     if (m_apikey_sent || m_apikey.IsEmpty())
         return;
-    m_apikey_sent   = true;
+
+    m_apikey_sent = true;
     wxString script = wxString::Format(R"(
+    document.addEventListener('DOMContentLoaded', () => {
+      const data = {'command': 'silent_login', 'token': '%s'};
+      window.postMessage(data, '*');
+    });
+
     // Check if window.fetch exists before overriding
     if (window.fetch) {
         const originalFetch = window.fetch;
@@ -109,8 +119,7 @@ void PrinterWebView::SendAPIKey()
             return originalFetch(input, init);
         };
     }
-)",
-                                       m_apikey);
+)", m_apikey, m_apikey);
     m_browser->RemoveAllUserScripts();
 
     m_browser->AddUserScript(script);

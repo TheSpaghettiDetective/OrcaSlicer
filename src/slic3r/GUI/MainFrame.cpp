@@ -3573,7 +3573,8 @@ void MainFrame::load_printer_url()
     wxString url = cfg.opt_string("print_host_webui").empty() ? cfg.opt_string("print_host") : cfg.opt_string("print_host_webui");
     wxString apikey;
     if (cfg.has("printhost_apikey") && (cfg.option<ConfigOptionEnum<PrintHostType>>("host_type")->value == htPrusaLink ||
-                                        cfg.option<ConfigOptionEnum<PrintHostType>>("host_type")->value == htPrusaConnect))
+                                        cfg.option<ConfigOptionEnum<PrintHostType>>("host_type")->value == htPrusaConnect ||
+                                        cfg.option<ConfigOptionEnum<PrintHostType>>("host_type")->value == htObico))
         apikey = cfg.opt_string("printhost_apikey");
     if (!url.empty()) {
         if (!url.Lower().starts_with("http"))

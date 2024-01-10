@@ -33,6 +33,7 @@ class PhysicalPrinterDialog : public DPIDialog
     ScalableButton*     m_printhost_cafile_browse_btn       {nullptr};
     ScalableButton*     m_printhost_client_cert_browse_btn  {nullptr};
     ScalableButton*     m_printhost_port_browse_btn         {nullptr};
+    ScalableButton*     m_printhost_apikey_get_btn          {nullptr};
 
     RoundedRectangle*   m_input_area                        {nullptr};
     wxStaticText*       m_valid_label                       {nullptr};
