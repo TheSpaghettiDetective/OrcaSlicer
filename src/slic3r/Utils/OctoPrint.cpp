@@ -1230,7 +1230,7 @@ bool Obico::test(wxString& msg) const
     const char *name = get_name();
 
     bool res = true;
-    auto url = make_url("ent/partners/slicer-api/version/");
+    auto url = make_url("ent/api/orca_slicer/version/");
 
     BOOST_LOG_TRIVIAL(info) << boost::format("%1%: Get version at: %2%") % name % url;
     // Here we do not have to add custom "Host" header - the url contains host filled by user and libCurl will set the header by itself.
@@ -1281,7 +1281,7 @@ bool Obico::test_with_resolved_ip(wxString &msg) const
     const char* name = get_name();
     bool res = true;
     // Msg contains ip string.
-    auto url = substitute_host(make_url("ent/partners/slicer-api/version/"), GUI::into_u8(msg));
+    auto url = substitute_host(make_url("ent/api/orca_slicer/version/"), GUI::into_u8(msg));
     msg.Clear();
 
     BOOST_LOG_TRIVIAL(info) << boost::format("%1%: Get version at: %2%") % name % url;
@@ -1333,7 +1333,7 @@ bool Obico::get_printers(wxArrayString& printers) const
     const char *name = get_name();
 
     bool res = true;
-    auto url = make_url("ent/partners/slicer-api/printers/");
+    auto url = make_url("ent/api/orca_slicer/printers/");
 
     BOOST_LOG_TRIVIAL(info) << boost::format("%1%: List printers at: %2%") % name % url;
 
@@ -1456,7 +1456,7 @@ bool Obico::upload_inner_with_resolved_ip(PrintHostUpload upload_data, ProgressF
     const char* name = get_name();
     const auto upload_filename = upload_data.upload_path.filename();
     const auto upload_parent_path = upload_data.upload_path.parent_path();
-    std::string url = substitute_host(make_url("ent/partners/slicer-api/files/local/"), resolved_addr.to_string());
+    std::string url = substitute_host(make_url("ent/api/orca_slicer/files/local/"), resolved_addr.to_string());
     bool result = true;
     const auto printer_id = get_printer_id()
 
@@ -1533,7 +1533,7 @@ bool Obico::upload_inner_with_host(PrintHostUpload upload_data, ProgressFn prorg
     {
         // If https is entered we assume signed ceritificate is being used
         // IP resolving will not happen - it could resolve into address not being specified in cert
-        url = make_url("ent/partners/slicer-api/files/local/");
+        url = make_url("ent/api/orca_slicer/files/local/");
     }
 #ifdef WIN32
     else {
@@ -1544,7 +1544,7 @@ bool Obico::upload_inner_with_host(PrintHostUpload upload_data, ProgressFn prorg
         // Solves troubles of uploades failing with name address.
         // in original address (m_host) replace host for resolved ip
         info_fn(L"resolve", test_msg_or_host_ip);
-        url = substitute_host(make_url("ent/partners/slicer-api/files/local/"), GUI::into_u8(test_msg_or_host_ip));
+        url = substitute_host(make_url("ent/api/orca_slicer/files/local/"), GUI::into_u8(test_msg_or_host_ip));
         BOOST_LOG_TRIVIAL(info) << "Upload address after ip resolve: " << url;
     }
 #endif // _WIN32
