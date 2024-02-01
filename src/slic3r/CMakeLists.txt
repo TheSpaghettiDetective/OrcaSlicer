@@ -522,6 +522,10 @@ set(SLIC3R_GUI_SOURCES
     GUI/calib_dlg.cpp
     Utils/CalibUtils.cpp
     Utils/CalibUtils.hpp
+    GUI/PrinterCloundAuthDialog.cpp
+    GUI/PrinterCloundAuthDialog.hpp
+    Utils/ObicoPrint.cpp    
+    Utils/ObicoPrint.hpp
 )
 
 if (WIN32)
