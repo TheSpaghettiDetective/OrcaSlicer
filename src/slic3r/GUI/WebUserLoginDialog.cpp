@@ -75,15 +75,9 @@ ZUserLogin::ZUserLogin() : wxDialog((wxWindow *) (wxGetApp().mainframe), wxID_AN
         CentreOnParent();
     }
     else {
-        std::string host_url = agent->get_bambulab_host();
-        TargetUrl = host_url + "/sign-in";
+        std::string host_url = "https://app.obico.io";
+        TargetUrl = host_url + "/accounts/login/";
         m_networkOk = false;
-
-        wxString strlang = wxGetApp().current_language_code_safe();
-        if (strlang != "") {
-            strlang.Replace("_", "-");
-            TargetUrl = host_url + "/" + strlang + "/sign-in";
-        }
 
         BOOST_LOG_TRIVIAL(info) << "login url = " << TargetUrl.ToStdString();
 
