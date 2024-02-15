@@ -1,4 +1,4 @@
-#include "PrinterCloundAuthDialog.hpp"
+#include "PrinterCloudAuthDialog.hpp"
 #include <wx/sizer.h>
 #include <wx/toolbar.h>
 #include <wx/textdlg.h>
@@ -22,7 +22,7 @@
 //------------------------------------------
 namespace Slic3r { namespace GUI {
 
-PrinterCloundAuthDialog::PrinterCloundAuthDialog(wxWindow* parent, PrintHost* host)
+PrinterCloudAuthDialog::PrinterCloudAuthDialog(wxWindow* parent, PrintHost* host)
     : wxDialog((wxWindow*) (wxGetApp().mainframe), wxID_ANY, "Login"), m_host(host)
 {
     SetBackgroundColour(*wxWHITE);
@@ -40,11 +40,11 @@ PrinterCloundAuthDialog::PrinterCloundAuthDialog(wxWindow* parent, PrintHost* ho
     m_browser->SetSize(0, 0);
 
     // Connect the webview events
-    Bind(wxEVT_WEBVIEW_NAVIGATING, &PrinterCloundAuthDialog::OnNavigationRequest, this, m_browser->GetId());
-    Bind(wxEVT_WEBVIEW_NAVIGATED, &PrinterCloundAuthDialog::OnNavigationComplete, this, m_browser->GetId());
-    Bind(wxEVT_WEBVIEW_LOADED, &PrinterCloundAuthDialog::OnDocumentLoaded, this, m_browser->GetId());
-    Bind(wxEVT_WEBVIEW_NEWWINDOW, &PrinterCloundAuthDialog::OnNewWindow, this, m_browser->GetId());
-    Bind(wxEVT_WEBVIEW_SCRIPT_MESSAGE_RECEIVED, &PrinterCloundAuthDialog::OnScriptMessage, this, m_browser->GetId());
+    Bind(wxEVT_WEBVIEW_NAVIGATING, &PrinterCloudAuthDialog::OnNavigationRequest, this, m_browser->GetId());
+    Bind(wxEVT_WEBVIEW_NAVIGATED, &PrinterCloudAuthDialog::OnNavigationComplete, this, m_browser->GetId());
+    Bind(wxEVT_WEBVIEW_LOADED, &PrinterCloudAuthDialog::OnDocumentLoaded, this, m_browser->GetId());
+    Bind(wxEVT_WEBVIEW_NEWWINDOW, &PrinterCloudAuthDialog::OnNewWindow, this, m_browser->GetId());
+    Bind(wxEVT_WEBVIEW_SCRIPT_MESSAGE_RECEIVED, &PrinterCloudAuthDialog::OnScriptMessage, this, m_browser->GetId());
 
     // UI
     SetTitle(_L("Login"));
@@ -59,14 +59,14 @@ PrinterCloundAuthDialog::PrinterCloundAuthDialog(wxWindow* parent, PrintHost* ho
     Move(tmpPT);
 }
 
-PrinterCloundAuthDialog::~PrinterCloundAuthDialog() {}
+PrinterCloudAuthDialog::~PrinterCloudAuthDialog() {}
 
-void PrinterCloundAuthDialog::OnNavigationRequest(wxWebViewEvent& evt)
+void PrinterCloudAuthDialog::OnNavigationRequest(wxWebViewEvent& evt)
 {
     //todo
 }
 
-void PrinterCloundAuthDialog::OnNavigationComplete(wxWebViewEvent& evt)
+void PrinterCloudAuthDialog::OnNavigationComplete(wxWebViewEvent& evt)
 {
     m_browser->Show();
     Layout();
@@ -74,17 +74,16 @@ void PrinterCloundAuthDialog::OnNavigationComplete(wxWebViewEvent& evt)
     //WebView::RunScript(m_browser, "window.wx.postMessage('This is a web message')");
 }
 
-void PrinterCloundAuthDialog::OnDocumentLoaded(wxWebViewEvent& evt)
+void PrinterCloudAuthDialog::OnDocumentLoaded(wxWebViewEvent& evt)
 {
     // todo
 }
 
-void PrinterCloundAuthDialog::OnNewWindow(wxWebViewEvent& evt)
-{
+void PrinterCloudAuthDialog::OnNewWindow(wxWebViewEvent& evt) {
 
 }
 
-void PrinterCloundAuthDialog::OnScriptMessage(wxWebViewEvent& evt)
+void PrinterCloudAuthDialog::OnScriptMessage(wxWebViewEvent& evt)
 {
     wxString str_input = evt.GetString();
     try {

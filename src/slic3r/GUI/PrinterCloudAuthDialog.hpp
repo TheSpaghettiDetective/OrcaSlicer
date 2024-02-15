@@ -1,5 +1,5 @@
-#ifndef slic3r_GUI_PrinterCloundAuthDialog_hpp_
-#define slic3r_GUI_PrinterCloundAuthDialog_hpp_
+#ifndef slic3r_GUI_PrinterCloudAuthDialog_hpp_
+#define slic3r_GUI_PrinterCloudAuthDialog_hpp_
 
 #include <wx/wx.h>
 #include <wx/font.h>
@@ -21,7 +21,7 @@
 
 namespace Slic3r { namespace GUI {
 
-class PrinterCloundAuthDialog : public wxDialog
+class PrinterCloudAuthDialog : public wxDialog
 {
 protected:
     wxWebView* m_browser;
@@ -33,8 +33,8 @@ protected:
     std::string m_apikey;
 
 public:
-    PrinterCloundAuthDialog(wxWindow* parent, PrintHost* host);
-    ~PrinterCloundAuthDialog();
+    PrinterCloudAuthDialog(wxWindow* parent, PrintHost* host);
+    ~PrinterCloudAuthDialog();
 
     std::string GetApiKey() { return m_apikey; };
 

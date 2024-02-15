@@ -1,6 +1,6 @@
 #include "PhysicalPrinterDialog.hpp"
 #include "PresetComboBoxes.hpp"
-#include "PrinterCloundAuthDialog.hpp"
+#include "PrinterCloudAuthDialog.hpp"
 
 #include <cstddef>
 #include <vector>
@@ -174,7 +174,7 @@ void PhysicalPrinterDialog::build_printhost_settings(ConfigOptionsGroup* m_optgr
                 result = host->test(msg);
 
                 if (!result && host->is_cloud()) {
-                    PrinterCloundAuthDialog dlg(this->GetParent(), host.get());
+                    PrinterCloudAuthDialog dlg(this->GetParent(), host.get());
                     dlg.ShowModal();
 
                     auto api_key = dlg.GetApiKey();

@@ -70,7 +70,7 @@ public:
 
     static PrintHost* get_print_host(DynamicPrintConfig *config);
 
-    //Support for cloud Obico
+    //Support for cloud webui login
     virtual bool is_cloud() const { return false; }
     virtual bool get_login_url(wxString& auth_url) const { return false; }
     virtual void set_api_key(const std::string auth_api_key) {}

@@ -1,4 +1,4 @@
-#include "ObicoPrint.hpp"
+#include "Obico.hpp"
 
 #include <algorithm>
 #include <sstream>
@@ -31,7 +31,7 @@ namespace pt = boost::property_tree;
 
 namespace Slic3r {
 
-ObicoPrint::ObicoPrint(DynamicPrintConfig* config) : 
+Obico::Obico(DynamicPrintConfig* config) : 
     m_host(config->opt_string("print_host")), 
     m_web_ui(config->opt_string("print_host_webui")),
     m_cafile(config->opt_string("printhost_cafile")),
@@ -40,15 +40,14 @@ ObicoPrint::ObicoPrint(DynamicPrintConfig* config) :
     m_ssl_revoke_best_effort(config->opt_bool("printhost_ssl_ignore_revoke"))
 {}
 
-const char* ObicoPrint::get_name() const { return "ObicoPrint"; }
+const char* Obico::get_name() const { return "Obico"; }
 
-void ObicoPrint::set_api_key(const std::string auth_api_key) { m_apikey = auth_api_key; }
+void Obico::set_api_key(const std::string auth_api_key) { m_apikey = auth_api_key; }
 
-std::string ObicoPrint::get_host() const
-{
+std::string Obico::get_host() const {
     return m_host;
 }
-void ObicoPrint::set_auth(Http& http) const
+void  Obico::set_auth(Http& http) const
 {
     http.header("Authorization", "Token " + m_apikey);
     if (!m_cafile.empty()) {
@@ -56,20 +55,20 @@ void ObicoPrint::set_auth(Http& http) const
     }
 }
 
-bool ObicoPrint::get_login_url(wxString& auth_url) const
+bool Obico::get_login_url(wxString& auth_url) const
 {
     auth_url = make_url("ent/api/orca_slicer/login/");
     return true;
 }
 
-wxString ObicoPrint::get_test_ok_msg() const { return _(L("Connection to Obico works correctly.")); }
+wxString Obico::get_test_ok_msg() const { return _(L("Connection to Obico works correctly.")); }
 
-wxString ObicoPrint::get_test_failed_msg(wxString& msg) const
+wxString Obico::get_test_failed_msg(wxString& msg) const
 {
     return GUI::format_wxstr("%s: %s", _L("Could not connect to Obico"), msg.Truncate(256));
 }
 
-bool ObicoPrint::test(wxString& msg) const
+bool Obico::test(wxString& msg) const
 { 
     if (m_apikey.empty()) {
         return false;
@@ -120,7 +119,7 @@ bool ObicoPrint::test(wxString& msg) const
     return res;
 }
 
-bool ObicoPrint::get_printers(wxArrayString& printers) const
+bool Obico::get_printers(wxArrayString& printers) const
 {
     const char* name = get_name();
     bool        res  = false;
@@ -169,11 +168,11 @@ bool ObicoPrint::get_printers(wxArrayString& printers) const
     return res;
 }
 
-PrintHostPostUploadActions ObicoPrint::get_post_upload_actions() const{
+PrintHostPostUploadActions Obico::get_post_upload_actions() const {
     return PrintHostPostUploadAction::StartPrint; 
 }
 
-bool ObicoPrint::upload(PrintHostUpload upload_data, ProgressFn prorgess_fn, ErrorFn error_fn, InfoFn info_fn) const
+bool Obico::upload(PrintHostUpload upload_data, ProgressFn prorgess_fn, ErrorFn error_fn, InfoFn info_fn) const
 {   
     const char* name = get_name();
     const auto  upload_filename    = upload_data.upload_path.filename();
@@ -218,7 +217,7 @@ bool ObicoPrint::upload(PrintHostUpload upload_data, ProgressFn prorgess_fn, Err
     return res;
 }
 
-std::string ObicoPrint::make_url(const std::string& path) const
+std::string Obico::make_url(const std::string& path) const
 {
     if (m_host.find("http://") == 0 || m_host.find("https://") == 0) {
         if (m_host.back() == '/') {

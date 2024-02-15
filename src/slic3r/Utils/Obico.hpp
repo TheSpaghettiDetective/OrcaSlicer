@@ -1,5 +1,5 @@
-#ifndef slic3r_ObicoPrint_hpp_
-#define slic3r_ObicoPrint_hpp_
+#ifndef slic3r_Obico_hpp_
+#define slic3r_Obico_hpp_
 
 #include <string>
 #include <wx/string.h>
@@ -13,11 +13,11 @@ namespace Slic3r {
 
 class DynamicPrintConfig;
 class Http;
-class ObicoPrint : public PrintHost
+class Obico : public PrintHost
 {
 public:
-    ObicoPrint(DynamicPrintConfig* config);
-    ~ObicoPrint() override = default;
+    Obico(DynamicPrintConfig* config);
+    ~Obico() override = default;
 
     const char* get_name() const override;
     virtual bool can_test() const { return true; };

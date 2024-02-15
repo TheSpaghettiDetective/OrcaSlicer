@@ -20,7 +20,7 @@
 #include "Repetier.hpp"
 #include "MKS.hpp"
 #include "../GUI/PrintHostDialogs.hpp"
-#include "ObicoPrint.hpp"
+#include "Obico.hpp"
 
 namespace fs = boost::filesystem;
 using boost::optional;
@@ -55,7 +55,7 @@ PrintHost* PrintHost::get_print_host(DynamicPrintConfig *config)
             case htPrusaLink: return new PrusaLink(config);
             case htPrusaConnect: return new PrusaConnect(config);
             case htMKS:       return new MKS(config);
-            case htObico:     return new ObicoPrint(config);
+            case htObico:     return new Obico(config);
             default:          return nullptr;
         }
     } else {
