@@ -353,8 +353,8 @@ void PhysicalPrinterDialog::update_ports() {
                 if (match.size() <= 1) {
                     return std::string();
                 }
-                boost::format urlFormat("%1%/ent/api/orca_slicer/auto_login?token=%2%&jump=/printers/%3%/control");
-                urlFormat % host % api_key % match[1];
+                boost::format urlFormat("%1%/printers/%2%/control");
+                urlFormat % host % match[1];
                 return urlFormat.str();
             };
             auto url = build_web_ui(m_config);

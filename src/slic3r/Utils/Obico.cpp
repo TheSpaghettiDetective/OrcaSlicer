@@ -49,7 +49,7 @@ std::string Obico::get_host() const {
 }
 void  Obico::set_auth(Http& http) const
 {
-    http.header("Authorization", "Token " + m_apikey);
+    http.header("Authorization", "Bearer " + m_apikey);
     if (!m_cafile.empty()) {
         http.ca_file(m_cafile);
     }
@@ -57,7 +57,7 @@ void  Obico::set_auth(Http& http) const
 
 bool Obico::get_login_url(wxString& auth_url) const
 {
-    auth_url = make_url("ent/api/orca_slicer/login/");
+    auth_url = make_url("o/authorize?response_type=token&client_id=OrcaSlicer");
     return true;
 }
 
@@ -76,7 +76,7 @@ bool Obico::test(wxString& msg) const
 
     bool res = true;
     const char* name = get_name();
-    auto url = make_url("ent/api/orca_slicer/version/");
+    auto url = make_url("api/v1/version/");
 
     BOOST_LOG_TRIVIAL(info) << boost::format("%1%: Get version at: %2%") % name % url;
     // Here we do not have to add custom "Host" header - the url contains host filled by user and libCurl will set the header by itself.
@@ -123,7 +123,7 @@ bool Obico::get_printers(wxArrayString& printers) const
 {
     const char* name = get_name();
     bool        res  = false;
-    auto        url  = make_url("ent/api/orca_slicer/printers/");
+    auto        url  = make_url("api/v1/printers/");
     BOOST_LOG_TRIVIAL(info) << boost::format("%1%: List printers at: %2%") % name % url;
 
     auto http = Http::get(std::move(url));
@@ -152,7 +152,7 @@ bool Obico::get_printers(wxArrayString& printers) const
                 throw HostNetworkError(*error);
 
             try {
-                BOOST_FOREACH (boost::property_tree::ptree::value_type& v, ptree.get_child("printers")) {
+                BOOST_FOREACH (boost::property_tree::ptree::value_type& v, ptree) {
                     const auto name = v.second.get<std::string>("name");
                     const auto port = v.second.get<std::string>("id");
                     printers.push_back(Slic3r::GUI::from_u8(name + " [" + port + "]"));
@@ -184,13 +184,14 @@ bool Obico::upload(PrintHostUpload upload_data, ProgressFn prorgess_fn, ErrorFn 
     }
 
     bool res = true;
-    auto url = make_url("ent/api/orca_slicer/files/local/");
+    auto url = make_url("api/v1/g_code_files/");
 
     auto  http = Http::post(url); // std::move(url));
     set_auth(http);
     http.form_add("print", upload_data.post_action == PrintHostPostUploadAction::StartPrint ? "true" : "false")
         .form_add("path", upload_parent_path.string()) // XXX: slashes on windows ???
-        .form_add("printer_id", m_port) 
+        .form_add("printer_id", m_port)
+        .form_add("filename", upload_filename.string()) 
         .form_add_file("file", upload_data.source_path.string(), upload_filename.string())
 
         .on_complete([&](std::string body, unsigned status) {
