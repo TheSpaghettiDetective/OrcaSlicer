@@ -362,6 +362,7 @@ void PhysicalPrinterDialog::update_ports() {
                 if (TextInput* temp_input = dynamic_cast<TextInput*>(print_host_webui_field->getWindow()); temp_input) {
                     if (wxTextCtrl* temp = temp_input->GetTextCtrl()) {
                         temp->SetValue(wxString(url));
+                        m_config->opt_string("print_host_webui") = url;
                     }
                 }
             }
