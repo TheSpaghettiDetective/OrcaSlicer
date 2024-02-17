@@ -61,7 +61,7 @@ bool Obico::get_login_url(wxString& auth_url) const
     return true;
 }
 
-wxString Obico::get_test_ok_msg() const { return _(L("Connection to Obico works correctly.")); }
+wxString Obico::get_test_ok_msg() const { return _(L("Connected to Obico successfully!")); }
 
 wxString Obico::get_test_failed_msg(wxString& msg) const
 {
@@ -90,21 +90,6 @@ bool Obico::test(wxString& msg) const
         })
         .on_complete([&, this](std::string body, unsigned) {
             BOOST_LOG_TRIVIAL(debug) << boost::format("%1%: Got version: %2%") % name % body;
-
-            try {
-                std::stringstream ss(body);
-                pt::ptree         ptree;
-                pt::read_json(ss, ptree);
-
-                const auto text = ptree.get_optional<std::string>("text");
-                res             = std::string("Obico") == text;
-                if (!res) {
-                    msg = GUI::format_wxstr(_L("Mismatched type of print host: %s"), (text ? *text : name));
-                }
-            } catch (const std::exception&) {
-                res = false;
-                msg = "Could not parse server response";
-            }
         })
 #ifdef WIN32
         .ssl_revoke_best_effort(m_ssl_revoke_best_effort)
