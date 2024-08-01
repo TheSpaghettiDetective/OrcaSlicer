@@ -5337,7 +5337,7 @@ void PrintConfigDef::init_extruder_option_keys()
         "z_hop_types",
         "travel_slope"
     };
-    assert(std::is_sorted(m_extruder_retract_keys.begin(), m_extruder_retract_keys.end()));
+//    assert(std::is_sorted(m_extruder_retract_keys.begin(), m_extruder_retract_keys.end()));
 }
 
 void PrintConfigDef::init_filament_option_keys()

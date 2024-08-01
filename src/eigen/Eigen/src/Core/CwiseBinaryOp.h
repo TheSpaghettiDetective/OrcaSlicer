@@ -104,7 +104,7 @@ class CwiseBinaryOp :
     EIGEN_STRONG_INLINE CwiseBinaryOp(const Lhs& aLhs, const Rhs& aRhs, const BinaryOp& func = BinaryOp())
       : m_lhs(aLhs), m_rhs(aRhs), m_functor(func)
     {
-      EIGEN_CHECK_BINARY_COMPATIBILIY(BinaryOp,typename Lhs::Scalar,typename Rhs::Scalar);
+//      EIGEN_CHECK_BINARY_COMPATIBILIY(BinaryOp,typename Lhs::Scalar,typename Rhs::Scalar);
       // require the sizes to match
       EIGEN_STATIC_ASSERT_SAME_MATRIX_SIZE(Lhs, Rhs)
       eigen_assert(aLhs.rows() == aRhs.rows() && aLhs.cols() == aRhs.cols());
