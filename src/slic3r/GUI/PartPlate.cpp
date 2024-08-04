@@ -1860,7 +1860,7 @@ void PartPlate::set_plate_name(const std::string& name)
     if (m_print != nullptr)
         m_print->set_plate_name(name);
 
-	generate_plate_name_texture();
+	// generate_plate_name_texture();
 }
 
 //get the print's object, result and index
