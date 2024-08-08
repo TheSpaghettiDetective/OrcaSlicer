@@ -34,6 +34,9 @@ namespace IO {
 #define JSON_ASSEMPLE_OBJECT_ROTATE_X          "rotate_x"
 #define JSON_ASSEMPLE_OBJECT_ROTATE_Y          "rotate_y"
 #define JSON_ASSEMPLE_OBJECT_ROTATE_Z          "rotate_z"
+#define JSON_ASSEMPLE_OBJECT_SCALE_X           "scale_x"
+#define JSON_ASSEMPLE_OBJECT_SCALE_Y           "scale_y"
+#define JSON_ASSEMPLE_OBJECT_SCALE_Z           "scale_z"
 
 
 #define JSON_ASSEMPLE_OBJECT_MIN_Z              "min_z"
@@ -65,6 +68,9 @@ typedef struct _assemble_object_info {
     std::vector<float>  rotate_x;
     std::vector<float>  rotate_y;
     std::vector<float>  rotate_z;
+    std::vector<float>  scale_x;
+    std::vector<float>  scale_y;
+    std::vector<float>  scale_z;
     std::map<std::string, std::string> print_params;
     std::vector<height_range_info_t> height_ranges;
 }assemble_object_info_t;

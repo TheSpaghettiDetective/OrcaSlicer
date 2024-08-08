@@ -707,6 +707,31 @@ static int load_assemble_plate_list(std::string config_file, std::vector<assembl
                     }
                 }
 
+                if (object_json.contains(JSON_ASSEMPLE_OBJECT_SCALE_X)) {
+                    assemble_object.scale_x = object_json[JSON_ASSEMPLE_OBJECT_SCALE_X].get<std::vector<float>>();
+                    if ((assemble_object.scale_x.size() > 0) && (assemble_object.scale_x.size() != assemble_object.count) && (assemble_object.scale_x.size() != 1))
+                    {
+                        BOOST_LOG_TRIVIAL(error) << __FUNCTION__ << boost::format(": object %1%'s pos_x count %2% not equal to clone count %3%, also not equal to 1") % assemble_object.path % assemble_object.scale_x.size() % assemble_object.count;
+                        return CLI_CONFIG_FILE_ERROR;
+                    }
+                }
+                if (object_json.contains(JSON_ASSEMPLE_OBJECT_SCALE_Y)) {
+                    assemble_object.scale_y = object_json[JSON_ASSEMPLE_OBJECT_SCALE_Y].get<std::vector<float>>();
+                    if ((assemble_object.scale_y.size() > 0) && (assemble_object.scale_y.size() != assemble_object.count) && (assemble_object.scale_y.size() != 1))
+                    {
+                        BOOST_LOG_TRIVIAL(error) << __FUNCTION__ << boost::format(": object %1%'s pos_y count %2% not equal to clone count %3%, also not equal to 1") % assemble_object.path % assemble_object.scale_y.size() % assemble_object.count;
+                        return CLI_CONFIG_FILE_ERROR;
+                    }
+                }
+                if (object_json.contains(JSON_ASSEMPLE_OBJECT_SCALE_Z)) {
+                    assemble_object.scale_z = object_json[JSON_ASSEMPLE_OBJECT_SCALE_Z].get<std::vector<float>>();
+                    if ((assemble_object.scale_z.size() > 0) && (assemble_object.scale_z.size() != assemble_object.count) && (assemble_object.scale_z.size() != 1))
+                    {
+                        BOOST_LOG_TRIVIAL(error) << __FUNCTION__ << boost::format(": object %1%'s pos_z count %2% not equal to clone count %3%, also not equal to 1") % assemble_object.path % assemble_object.scale_z.size() % assemble_object.count;
+                        return CLI_CONFIG_FILE_ERROR;
+                    }
+                }
+
                 if (object_json.contains(JSON_ASSEMPLE_OBJECT_PRINT_PARAMS)) {
                     assemble_object.print_params = object_json[JSON_ASSEMPLE_OBJECT_PRINT_PARAMS].get<std::map<std::string, std::string>>();
                     BOOST_LOG_TRIVIAL(debug) << boost::format("Plate %1%, object %2% has %3% print params") % (plate_index + 1) %assemble_object.path % assemble_object.print_params.size();
@@ -924,6 +949,12 @@ static int construct_assemble_list(std::vector<assemble_plate_info_t> &assemble_
                 assemble_object.rotate_y.resize(1, 0.f);
             if (assemble_object.rotate_z.empty())
                 assemble_object.rotate_z.resize(1, 0.f);
+            if (assemble_object.scale_x.empty())
+                assemble_object.scale_x.resize(1, 0.f);
+            if (assemble_object.scale_y.empty())
+                assemble_object.scale_y.resize(1, 0.f);
+            if (assemble_object.scale_z.empty())
+                assemble_object.scale_z.resize(1, 0.f);
             if (assemble_object.assemble_index.empty())
                 assemble_object.assemble_index.resize(1, 0);
 
@@ -931,6 +962,7 @@ static int construct_assemble_list(std::vector<assemble_plate_info_t> &assemble_
             object->rotate(assemble_object.rotate_x[0], Axis::X);
             object->rotate(assemble_object.rotate_y[0], Axis::Y);
             object->rotate(assemble_object.rotate_z[0], Axis::Z);
+            object->scale(assemble_object.scale_x[0], assemble_object.scale_y[0], assemble_object.scale_z[0]);
             merge_or_add_object(assemble_plate_info, model, assemble_object.assemble_index[0], merged_objects, object);
             used_filaments.emplace(assemble_object.filaments[0]);
             BOOST_LOG_TRIVIAL(debug) << __FUNCTION__ << boost::format(": object %1%, name %2%, pos_x %3% pos_y %4%, pos_z %5%, filament %6%, assemble_index %7%")
@@ -949,6 +981,7 @@ static int construct_assemble_list(std::vector<assemble_plate_info_t> &assemble_
                 copy_obj->rotate(assemble_object.rotate_x[array_index], Axis::X);
                 copy_obj->rotate(assemble_object.rotate_y[array_index], Axis::Y);
                 copy_obj->rotate(assemble_object.rotate_z[array_index], Axis::Z);
+                object->scale(assemble_object.scale_x[array_index], assemble_object.scale_y[array_index], assemble_object.scale_z[array_index]);
 
                 if (copy_index < assemble_object.filaments.size())
                     array_index = copy_index;
