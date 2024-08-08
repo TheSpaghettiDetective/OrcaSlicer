@@ -950,11 +950,11 @@ static int construct_assemble_list(std::vector<assemble_plate_info_t> &assemble_
             if (assemble_object.rotate_z.empty())
                 assemble_object.rotate_z.resize(1, 0.f);
             if (assemble_object.scale_x.empty())
-                assemble_object.scale_x.resize(1, 0.f);
+                assemble_object.scale_x.resize(1, 1.0f);
             if (assemble_object.scale_y.empty())
-                assemble_object.scale_y.resize(1, 0.f);
+                assemble_object.scale_y.resize(1, 1.0f);
             if (assemble_object.scale_z.empty())
-                assemble_object.scale_z.resize(1, 0.f);
+                assemble_object.scale_z.resize(1, 1.0f);
             if (assemble_object.assemble_index.empty())
                 assemble_object.assemble_index.resize(1, 0);
 
