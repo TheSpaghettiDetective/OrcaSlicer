@@ -1,0 +1,50 @@
+{
+  "tools": [
+    {
+      "name": "guides_search",
+      "title": "Search tuning guides",
+      "description": "Search the server's library of tuning and troubleshooting guides by symptom or goal (e.g. 'stringing', 'make part stronger', 'supports hard to remove', 'first layer not sticking', 'TPU settings'). Returns guide ids with one-line summaries. Guides are knowledge, not actions: retrieve one with guides_get, then decide which settings to change and apply them with settings_set_values.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Symptom, goal, or topic."
+          },
+          "limit": {
+            "type": "integer",
+            "default": 5,
+            "maximum": 20,
+            "description": "Maximum results."
+          }
+        },
+        "required": ["query"]
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "guides_get",
+      "title": "Get a tuning guide",
+      "description": "Return the full markdown text of one guide by id (ids come from guides_search or calibration_generate). Guides list the relevant setting keys, typical value ranges, tradeoffs, and the order in which to try changes. Treat them as expert reference material to adapt to the current printer, filament, and model — not as a script to apply verbatim.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Guide id, e.g. 'reduce-stringing'."
+          }
+        },
+        "required": ["id"]
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    }
+  ]
+}

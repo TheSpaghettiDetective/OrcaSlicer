@@ -1,0 +1,128 @@
+{
+  "tools": [
+    {
+      "name": "settings_search",
+      "title": "Search settings registry",
+      "description": "Search OrcaSlicer's settings registry by natural language or key substring (e.g. 'support interface distance', 'pressure advance'). Returns matching keys with scope and a one-line description. If you already know the exact key (e.g. 'layer_height', 'wall_loops'), skip this and call settings_get_values or settings_set_values directly; validation errors will catch mistakes.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Natural-language description or key fragment."
+          },
+          "scope": {
+            "type": "string",
+            "enum": ["process", "filament", "printer"],
+            "description": "Restrict results to one preset scope. Omit to search all."
+          },
+          "limit": {
+            "type": "integer",
+            "default": 10,
+            "maximum": 50,
+            "description": "Maximum results."
+          }
+        },
+        "required": ["query"]
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "settings_get_schema",
+      "title": "Get setting schemas",
+      "description": "Return the full schema for specific setting keys: type, unit, default, min/max or enum values with labels, which preset scope owns it, whether it can be overridden per-object/per-plate, and related keys (settings that interact with or are forced by this one). Use for unfamiliar keys before setting them; not needed for keys whose meaning and range you already know.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "keys": {
+            "type": "array",
+            "items": { "type": "string" },
+            "minItems": 1,
+            "maxItems": 20,
+            "description": "Setting keys, e.g. [\"support_top_z_distance\", \"sparse_infill_pattern\"]."
+          }
+        },
+        "required": ["keys"]
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "settings_get_values",
+      "title": "Read effective setting values",
+      "description": "Return the effective value of settings and which layer produced each one. OrcaSlicer resolves settings through layers: preset -> project override -> plate -> object modifier. Each result includes {key, value, source, preset_name?} where source is one of 'preset', 'project', 'plate', 'object'. Omit 'keys' to list only settings currently modified from their preset value — the cheapest way to see what has been changed.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "keys": {
+            "type": "array",
+            "items": { "type": "string" },
+            "maxItems": 50,
+            "description": "Keys to read. Omit to return all settings modified from preset defaults."
+          },
+          "plate_id": {
+            "type": "integer",
+            "description": "Resolve values as seen by this plate (1-based)."
+          },
+          "object_id": {
+            "type": "string",
+            "description": "Resolve values as seen by this object, including its modifiers. Object ids come from project_inspect."
+          }
+        }
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "settings_set_values",
+      "title": "Set setting values",
+      "description": "Set multiple settings in one call at an explicit layer. Values are validated against the registry before anything is applied; the call is transactional (all keys apply or none). The response lists 'applied' (key, old value, new value), 'side_effects' (other settings OrcaSlicer force-changed as a consequence, e.g. enabling spiral_mode alters wall and infill settings), and on failure 'errors' per docs/errors.md. Set dry_run=true to validate and preview side effects without changing anything. Changes affect the session project only; presets on disk are never modified.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "settings": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Map of setting key to new value, e.g. {\"layer_height\": 0.2, \"wall_loops\": 4, \"sparse_infill_density\": \"15%\"}."
+          },
+          "scope": {
+            "type": "string",
+            "enum": ["project", "plate", "object"],
+            "default": "project",
+            "description": "Which layer to write. 'project' overrides the preset for the whole project; 'plate'/'object' create narrower overrides and require plate_id/object_id."
+          },
+          "plate_id": {
+            "type": "integer",
+            "description": "Required when scope is 'plate'."
+          },
+          "object_id": {
+            "type": "string",
+            "description": "Required when scope is 'object'."
+          },
+          "dry_run": {
+            "type": "boolean",
+            "default": false,
+            "description": "Validate and report side effects without applying."
+          }
+        },
+        "required": ["settings"]
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    }
+  ]
+}

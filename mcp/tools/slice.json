@@ -1,0 +1,80 @@
+{
+  "tools": [
+    {
+      "name": "slice_run",
+      "title": "Slice project",
+      "description": "Slice the current project with the current settings. May take from seconds to minutes depending on model complexity. Returns per-plate results: status (sliced/failed/skipped-empty), estimated print time, filament used, and any slicing errors or warnings. Detailed statistics are available afterwards via slice_analyze. Re-slicing after settings changes replaces the previous result.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "plate_id": {
+            "type": "integer",
+            "description": "Slice only this plate (1-based). Omit to slice all non-empty plates."
+          }
+        }
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "slice_analyze",
+      "title": "Analyze slice result",
+      "description": "Return statistics from the most recent slice_run. 'summary' (default): per-plate print time, filament weight/length/cost, layer count, warnings count. 'features': per-feature-type breakdown (walls, infill, supports, ...) of time, volume, and speed ranges — useful for finding what dominates print time or where flow limits bind. 'warnings': full list of slicing warnings with locations (e.g. overhangs, thin walls, low bed adhesion). Fails with SLICE_STALE if settings changed since the last slice.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "detail": {
+            "type": "string",
+            "enum": ["summary", "features", "warnings"],
+            "default": "summary",
+            "description": "Which report to return."
+          },
+          "plate_id": {
+            "type": "integer",
+            "description": "Restrict to one plate (1-based). Omit for all sliced plates."
+          }
+        }
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "gcode_export",
+      "title": "Export G-code or sliced 3MF",
+      "description": "Write the most recent slice result to disk. format 'gcode' writes one .gcode file per plate; format '3mf' writes a single .3mf containing geometry, settings, and sliced plate data (the format Bambu/Orca printers and network plugins consume). Returns the written file paths and sizes. Fails with SLICE_STALE if settings changed since the last slice, and NOT_SLICED if slice_run has not been run.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "output_path": {
+            "type": "string",
+            "description": "Absolute file path (single plate or 3mf) or directory (multiple plates)."
+          },
+          "format": {
+            "type": "string",
+            "enum": ["gcode", "3mf"],
+            "default": "gcode",
+            "description": "Output format."
+          },
+          "plate_id": {
+            "type": "integer",
+            "description": "Export only this plate (1-based). Omit for all sliced plates."
+          }
+        },
+        "required": ["output_path"]
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    }
+  ]
+}

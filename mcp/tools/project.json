@@ -1,0 +1,50 @@
+{
+  "tools": [
+    {
+      "name": "project_open",
+      "title": "Open project or model file",
+      "description": "Open a .3mf, .stl, .step, or .obj file as the session project. Replaces any previously opened project. Returns a summary: plate count, object names, and the active printer/filament/process presets. For plain geometry files (.stl/.step/.obj) the current default presets are applied. Use project_inspect for more detail after opening.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Absolute path to the file to open."
+          }
+        },
+        "required": ["path"]
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "project_inspect",
+      "title": "Inspect current project",
+      "description": "Return the current project's structure at the requested detail level. 'summary' (default): plate count, object count, active preset names, modified-setting count, warnings. 'plates': per-plate object lists and per-plate setting overrides. 'objects': per-object geometry stats (size, triangle count), transforms, and per-object setting modifiers. Start with 'summary'; request deeper levels only when needed.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "detail": {
+            "type": "string",
+            "enum": ["summary", "plates", "objects"],
+            "default": "summary",
+            "description": "How much structure to return."
+          },
+          "plate_id": {
+            "type": "integer",
+            "description": "Restrict 'plates' or 'objects' detail to one plate (1-based). Omit for all plates."
+          }
+        }
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    }
+  ]
+}

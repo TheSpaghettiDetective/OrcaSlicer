@@ -1,0 +1,25 @@
+{
+  "tools": [
+    {
+      "name": "diagnostics_get",
+      "title": "Get diagnostics",
+      "description": "Return server and slicer diagnostics: OrcaSlicer version and build, server version, backend mode ('headless' CLI-backed or 'interactive' embedded in a running app), active session state (project open? last slice status?), and optionally the tail of the slicer log. Use when a tool fails unexpectedly or to check capabilities before starting.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "log_lines": {
+            "type": "integer",
+            "default": 0,
+            "maximum": 200,
+            "description": "How many trailing log lines to include. 0 (default) omits the log."
+          }
+        }
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    }
+  ]
+}

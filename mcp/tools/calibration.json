@@ -1,0 +1,36 @@
+{
+  "tools": [
+    {
+      "name": "calibration_generate",
+      "title": "Generate calibration print",
+      "description": "Generate a calibration test as the session project, using OrcaSlicer's built-in calibration modes. This replaces the currently open project. Types: 'flow_rate' (two-pass flow ratio patches), 'pressure_advance' (PA pattern/tower/line), 'temperature' (temp tower for the active filament), 'retraction' (retraction length tower), 'max_volumetric_speed' (flow ramp test). Uses the active printer/filament/process presets; open or select those first. The response includes the generated plate summary and the guide id (for guides_get) explaining how to read the printed result and which setting key to update with the outcome. This tool only exists because calibration generation is procedural; for open-ended tuning advice use guides_search instead.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["flow_rate", "pressure_advance", "temperature", "retraction", "max_volumetric_speed"],
+            "description": "Which calibration test to generate."
+          },
+          "params": {
+            "type": "object",
+            "description": "Optional per-type overrides; server defaults match the OrcaSlicer calibration dialog.",
+            "properties": {
+              "start": { "type": "number", "description": "Start value of the tested range (unit depends on type)." },
+              "end": { "type": "number", "description": "End value of the tested range." },
+              "step": { "type": "number", "description": "Increment between test segments." },
+              "variant": { "type": "string", "description": "Sub-variant where the type has one, e.g. pressure_advance: 'pattern' | 'tower' | 'line'." }
+            }
+          }
+        },
+        "required": ["type"]
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    }
+  ]
+}
