@@ -118,12 +118,14 @@
 #include "RemovableDriveManager.hpp"
 #include "InstanceCheck.hpp"
 #include "NotificationManager.hpp"
+#include "NativeUISpike.hpp"
 #include "PresetComboBoxes.hpp"
 #include "MsgDialog.hpp"
 #include "ProjectDirtyStateManager.hpp"
 #include "Gizmos/GLGizmoSimplify.hpp" // create suggestion notification
 #include "Gizmos/GLGizmoSVG.hpp" // Drop SVG file
 #include "Gizmos/GizmoObjectManipulation.hpp"
+#include "libslic3r/TriangleMesh.hpp"
 
 // BBS
 #include "Widgets/ProgressDialog.hpp"
@@ -4343,6 +4345,7 @@ struct Plater::priv
     GLToolbar collapse_toolbar;
     Preview *preview;
     AssembleView* assemble_view { nullptr };
+    std::unique_ptr<NativeUISpikeShell>  native_ui_spike;
     bool first_enter_assemble{ true };
     std::unique_ptr<NotificationManager> notification_manager;
 
@@ -4525,6 +4528,7 @@ struct Plater::priv
     int get_selected_volume_idx() const;
     void selection_changed();
     void object_list_changed();
+    void refresh_native_ui_spike_state();
 
     // BBS
     void select_curr_plate_all();
@@ -5007,6 +5011,68 @@ Plater::priv::priv(Plater *q, MainFrame *main_frame)
                                    .BottomDockable(false)
                                    .BestSize(wxSize(39 * wxGetApp().em_unit(), 90 * wxGetApp().em_unit())));
 
+    if (native_ui_spike_enabled()) {
+        native_ui_spike = std::make_unique<NativeUISpikeShell>(
+            q, NativeUISpikeShell::Callbacks{[this]() { collapse_sidebar(!sidebar_layout.is_collapsed); },
+                                             [main_frame, q]() {
+                                                 main_frame->select_tab(MainFrame::tp3DEditor);
+                                                 wxPostEvent(q, SimpleEvent(EVT_GLVIEWTOOLBAR_3D));
+                                             },
+                                             [main_frame, q]() {
+                                                 main_frame->select_tab(MainFrame::tpPreview);
+                                                 wxPostEvent(q, SimpleEvent(EVT_GLVIEWTOOLBAR_PREVIEW));
+                                             },
+                                             [q]() { wxPostEvent(q, SimpleEvent(EVT_GLTOOLBAR_SLICE_PLATE)); },
+                                             [this, q](int plate_index) {
+                                                 if (plate_index >= 0 && plate_index < partplate_list.get_plate_count()) {
+                                                     q->select_plate(plate_index);
+                                                     refresh_native_ui_spike_state();
+                                                 }
+                                             },
+                                             [this](int object_index) {
+                                                 if (object_index >= 0 && object_index < static_cast<int>(model.objects.size())) {
+                                                     sidebar->obj_list()->select_items(
+                                                         std::vector<ObjectVolumeID>{{model.objects[object_index], nullptr}});
+                                                     sidebar->obj_list()->update_selections_on_canvas();
+                                                     selection_changed();
+                                                     refresh_native_ui_spike_state();
+                                                 }
+                                             }});
+
+        const int top_height = q->FromDIP(48);
+        m_aui_mgr.AddPane(native_ui_spike->top_panel(), wxAuiPaneInfo()
+                                                            .Name("native_ui_spike_top")
+                                                            .Top()
+                                                            .CaptionVisible(false)
+                                                            .CloseButton(false)
+                                                            .Resizable(false)
+                                                            .DockFixed(true)
+                                                            .MinSize(-1, top_height)
+                                                            .BestSize(-1, top_height));
+        m_aui_mgr.AddPane(native_ui_spike->left_panel(), wxAuiPaneInfo()
+                                                             .Name("native_ui_spike_left")
+                                                             .Left()
+                                                             .CaptionVisible(false)
+                                                             .CloseButton(false)
+                                                             .TopDockable(false)
+                                                             .BottomDockable(false)
+                                                             .BestSize(q->FromDIP(230), -1)
+                                                             .MinSize(q->FromDIP(180), -1));
+        m_aui_mgr.AddPane(native_ui_spike->agent_panel(), wxAuiPaneInfo()
+                                                              .Name("native_ui_spike_agent")
+                                                              .Right()
+                                                              .CaptionVisible(false)
+                                                              .CloseButton(false)
+                                                              .Floatable(false)
+                                                              .TopDockable(false)
+                                                              .BottomDockable(false)
+                                                              .BestSize(q->FromDIP(340), -1)
+                                                              .MinSize(q->FromDIP(280), -1));
+        sidebar_layout.is_enabled   = true;
+        sidebar_layout.is_collapsed = false;
+        sidebar_layout.show         = true;
+    }
+
     auto* panel_sizer = new wxBoxSizer(wxHORIZONTAL);
     panel_sizer->Add(view3D, 1, wxEXPAND | wxALL, 0);
     panel_sizer->Add(preview, 1, wxEXPAND | wxALL, 0);
@@ -5022,7 +5088,7 @@ Plater::priv::priv(Plater *q, MainFrame *main_frame)
         // Load previous window layout
         const auto cfg    = wxGetApp().app_config;
         wxString   layout = wxString::FromUTF8(cfg->get("window_layout"));
-        if (!layout.empty()) {
+        if (!native_ui_spike && !layout.empty()) {
             bool removed_floating_state = false;
 #ifdef __WXGTK__
             if (disable_wayland_floating)
@@ -5048,10 +5114,14 @@ Plater::priv::priv(Plater *q, MainFrame *main_frame)
             e.Skip();
         });
 
-        // Hide sidebar initially, will re-show it after initialization when we got proper window size
+        // Hide the production sidebar initially. In spike mode the compact pane
+        // is the only left pane; otherwise this is restored after initialization.
         sidebar.Hide();
         m_aui_mgr.Update();
     }
+
+    if (native_ui_spike)
+        refresh_native_ui_spike_state();
 
     menus.init(main_frame);
 
@@ -5616,6 +5686,9 @@ void Plater::priv::select_view_3D(const std::string& name, bool no_slice)
     wxGetApp().obj_list()->update_selections();
     selection_changed();
 
+    if (native_ui_spike)
+        native_ui_spike->set_current_view(current_panel == preview);
+
     apply_free_camera_correction(false);
 }
 
@@ -5658,6 +5731,23 @@ void Plater::priv::collapse_sidebar(bool collapse)
 }
 
 void Plater::priv::update_sidebar(bool force_update) {
+    if (native_ui_spike) {
+        auto& legacy_pane = m_aui_mgr.GetPane(this->sidebar);
+        auto& spike_pane  = m_aui_mgr.GetPane("native_ui_spike_left");
+        if (legacy_pane.IsOk())
+            legacy_pane.Hide();
+        if (!spike_pane.IsOk() || this->current_panel == nullptr)
+            return;
+
+        const bool should_show = sidebar_layout.is_enabled && !sidebar_layout.is_collapsed;
+        if (spike_pane.IsShown() != should_show || force_update) {
+            spike_pane.Show(should_show);
+            native_ui_spike->set_left_pane_shown(should_show);
+            m_aui_mgr.Update();
+        }
+        return;
+    }
+
     auto& sidebar = m_aui_mgr.GetPane(this->sidebar);
     if (!sidebar.IsOk() || this->current_panel == nullptr) {
         return;
@@ -7327,6 +7417,7 @@ void Plater::priv::selection_changed()
     } else {
         view3D->render();
     }
+    refresh_native_ui_spike_state();
 }
 
 void Plater::priv::object_list_changed()
@@ -7347,6 +7438,31 @@ void Plater::priv::object_list_changed()
     main_frame->update_slice_print_status(MainFrame::eEventObjectUpdate, can_slice);
 
     wxGetApp().params_panel()->notify_object_config_changed();
+    refresh_native_ui_spike_state();
+}
+
+void Plater::priv::refresh_native_ui_spike_state()
+{
+    if (!native_ui_spike)
+        return;
+
+    NativeUISpikeShell::ProjectState state;
+    state.plates.reserve(partplate_list.get_plate_count());
+    for (int plate_index = 0; plate_index < partplate_list.get_plate_count(); ++plate_index) {
+        const PartPlate*  plate = partplate_list.get_plate(plate_index);
+        const std::string name  = plate == nullptr ? std::string() : plate->get_plate_name();
+        state.plates.emplace_back(name.empty() ? "Plate " + std::to_string(plate_index + 1) : name);
+    }
+
+    state.objects.reserve(model.objects.size());
+    for (size_t object_index = 0; object_index < model.objects.size(); ++object_index) {
+        const std::string& name = model.objects[object_index]->name;
+        state.objects.emplace_back(name.empty() ? "Object " + std::to_string(object_index + 1) : name);
+    }
+
+    state.selected_plate  = partplate_list.get_curr_plate_index();
+    state.selected_object = get_selected_object_idx();
+    native_ui_spike->set_project_state(std::move(state));
 }
 
 void Plater::priv::select_curr_plate_all()
@@ -10267,6 +10383,7 @@ void Plater::priv::on_plate_selected(SimpleEvent&)
 {
     BOOST_LOG_TRIVIAL(debug) << __FUNCTION__ << ":received plate selected event\n" ;
     sidebar->obj_list()->on_plate_selected(partplate_list.get_curr_plate_index());
+    refresh_native_ui_spike_state();
 }
 
 void Plater::priv::on_action_request_model_id(wxCommandEvent& evt)
@@ -11862,6 +11979,30 @@ Plater::Plater(wxWindow *parent, MainFrame *main_frame)
     // Initialization performed in the private c-tor
     enable_wireframe(true);
     m_only_gcode = false;
+
+    if (native_ui_spike_enabled()) {
+        CallAfter([this]() {
+            // Seed only a genuinely empty startup project. Files supplied on
+            // the command line or restored by startup remain authoritative.
+            if (!model().objects.empty()) {
+                p->refresh_native_ui_spike_state();
+                return;
+            }
+
+            while (p->partplate_list.get_plate_count() < 2)
+                p->partplate_list.create_plate();
+
+            p->sidebar->obj_list()->load_mesh_object(make_cube(24.0, 24.0, 24.0), "Spike cube");
+            p->sidebar->obj_list()->load_mesh_object(make_cube(18.0, 30.0, 15.0), "Spike block");
+            if (model().objects.size() >= 2) {
+                const Vec3d first_offset = model().objects[0]->instances[0]->get_offset();
+                model().objects[1]->instances[0]->set_offset(first_offset + Vec3d(45.0, 0.0, 0.0));
+                p->partplate_list.notify_instance_update(1, 0);
+                changed_object(1);
+            }
+            p->refresh_native_ui_spike_state();
+        });
+    }
 }
 
 bool Plater::Show(bool show)
